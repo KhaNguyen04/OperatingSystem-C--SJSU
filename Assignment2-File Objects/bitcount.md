@@ -26,12 +26,12 @@ there are two classes of errors you need to handle:
 1) if the program is invoked with the wrong number of arguments, 
 you should have an exit code of 1 and print the program name (how it was invoked) with the example usage statement:
 
-$ ./bitcount 
+$ ./bitcount  <br/>
 USAGE: ./bitcount filename <br/>
 $ echo $? <br/>
 1
 
-$/home/bcr33d/bitcount file1.txt file2.txt
+$/home/bcr33d/bitcount file1.txt file2.txt <br/>
 USAGE: ./bitcount filename <br/>
 $ echo $? <br/>
 1 <br/>

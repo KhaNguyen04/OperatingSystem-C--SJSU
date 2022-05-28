@@ -12,7 +12,7 @@ it will open that file, read the content of the file, and count the number of se
 
 -for example, if we run bitcount with hi.txt  Download hi.txt, we get the following:
 
-$ ./bitcount hi.txt 
+$ ./bitcount hi.txt <br/>
 9
 
 -the program will exit with a successful (0) exit code:

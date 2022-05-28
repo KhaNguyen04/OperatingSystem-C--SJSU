@@ -27,22 +27,22 @@ there are two classes of errors you need to handle:
 you should have an exit code of 1 and print the program name (how it was invoked) with the example usage statement:
 
 $ ./bitcount 
-USAGE: ./bitcount filename
-$ echo $?
+USAGE: ./bitcount filename <br/>
+$ echo $? <br/>
 1
 
 $/home/bcr33d/bitcount file1.txt file2.txt
-USAGE: ./bitcount filename
-$ echo $?
-1
+USAGE: ./bitcount filename <br/>
+$ echo $? <br/>
+1 <br/>
 
 2) if the file cannot be accessed, you should have an exit code of 2 and use the perror() function and 
 pass the file name as the first parameter to print an error message:
 
 $ ./bitcount filethatdoesnotexist.txt
-filethatdoesnotexist.txt: No such file or directory
-$ echo $?
-2
+filethatdoesnotexist.txt: No such file or directory <br/>
+$ echo $? <br/>
+2 <br/>
 
 when you implement your program, you must use the open() and read() system calls to read the bytes of the file so take a look at those.
 

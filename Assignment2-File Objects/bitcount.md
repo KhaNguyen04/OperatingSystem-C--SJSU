@@ -17,7 +17,7 @@ $ ./bitcount hi.txt <br/>
 
 -the program will exit with a successful (0) exit code:
 
-$ echo $?
+$ echo $? <br/>
 0
 
 -i've also provided you with rand.dat  Download rand.dat, which is made up of random bytes and a total of 1267076 set bits. you can test with hi.txt  

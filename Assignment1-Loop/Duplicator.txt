@@ -1,0 +1,40 @@
+Remember in school when you did something wrong, like chewed gum in class, you would have to write "I will not chew gum" 100 times. <br/>
+Well, we are going to write a program to help with that. You need to write a program that takes a count as a command-line parameter. <br/
+It will then read a line from stdin and write it to stdout that many times. For example: <br/>
+<br/>
+$ ./duplicator 3
+i will not chew gum
+i will not chew gum
+i will not chew gum
+i will not chew gum
+this is easy
+this is easy
+this is easy
+this is easy
+For this assignment must be done in C. It will be graded on an Ubuntu (or Kubuntu) 20.04 system,   <br/>
+so you are highly encouraged to use that to do your development and testing. To read from stdin, you will need to use getline(), <br/>
+remember to pass NULL and 0 as the first two arguments so that the right amount of space will be automatically allocated to hold your line. <br/>
+When you have finished with the line, remember to free() it. Note that the line includes the newline character, so you will probably want to remove that.<br/>
+
+When you program finishes, it will exit with an exit code of 0.
+
+# Error handling<br/>
+If the count is less than or equal to zero, not provided, or not a number, print the message "USAGE: duplicator count\ncount must be an integer greater than 0\n" and exit with a code of 1. We can assume that a valid count will fit into an "int". 
+# Example Tests<br/>
+./duplicator 1<br/>
+hello<br/>
+./duplicator 2<br/>
+line 1<br/>
+line 2<br/>
+line 3<br/>
+line 4<br/>
+line 5<br/>
+./duplicator 3<br/>
+i will not chew gum<br/>
+this is easy<br/>
+./duplicator 135<br/>
+i will not chew gum<br/>
+this is easy<br/>
+./duplicator<br/>
+
+

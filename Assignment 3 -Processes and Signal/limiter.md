@@ -21,7 +21,7 @@ $ echo $?    <br/>
 1 <br/>
 <br/>
 $ ./limiter 3 3 sleep 1 <br/>
-$ echo $?               <br/>
+$$ echo $$?               <br/>
 0 <br/>
 <br/>
 $ ./limiter 3 3 sleep 4 

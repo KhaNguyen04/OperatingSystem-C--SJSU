@@ -2,15 +2,15 @@ Remember in school when you did something wrong, like chewed gum in class, you w
 Well, we are going to write a program to help with that. You need to write a program that takes a count as a command-line parameter. 
 It will then read a line from stdin and write it to stdout that many times. For example: 
 
-$ ./duplicator 3
-i will not chew gum
-i will not chew gum
-i will not chew gum
-i will not chew gum
-this is easy
-this is easy
-this is easy
-this is easy
+$ ./duplicator 3<br/>
+i will not chew gum<br/>
+i will not chew gum<br/>
+i will not chew gum<br/>
+i will not chew gum<br/>
+this is easy<br/>
+this is easy<br/>
+this is easy<br/>
+this is easy<br/>
 
 For this assignment must be done in C. It will be graded on an Ubuntu (or Kubuntu) 20.04 system,   
 so you are highly encouraged to use that to do your development and testing. To read from stdin, you will need to use getline(), 

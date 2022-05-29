@@ -64,10 +64,10 @@ $ echo $? <br/>
 implementation details
 to implement limiter, you will need to use fork() to create a child process that will execvp() the given program and arguments. before you do the execvp(), you must use setrlimit() to set the memory limits in the child (you don't want to set the memory limits on the parent). meanwhile, after fork() the parent will set an alarm for the timeout using alarm(). you have to register a signal handler using signal() to catch the signal when the alarm goes off. if the alarm is triggered, you should kill the child process using the kill() system call with the SIGKILL signal. you will then use the wait() system call to wait for the process to complete. you will need to use the W macros, like WEXITSTATUS() to get the exit code. you can get the signal description from a signal number using strsignal().
 
-suggesting steps
-write the program that parses the arguments and coverts/validates the number parameters.
-add fork() and do the exec() in the child to start the program.
-add wait() use the WEXITSTATUS() to get the exit codes.
-do setrlimit() before the exec() to limit the amount of memory used. (RLIMIT_AS)
-make sure your wait correctly processes programs that fail due to a signal: /limiter 3 3 ./allocator 1
-add alarm() and signal() to get the timeouts working
+suggesting steps<br/>
+write the program that parses the arguments and coverts/validates the number parameters.<br/>
+add fork() and do the exec() in the child to start the program.<br/>
+add wait() use the WEXITSTATUS() to get the exit codes.<br/>
+do setrlimit() before the exec() to limit the amount of memory used. (RLIMIT_AS)<br/>
+make sure your wait correctly processes programs that fail due to a signal: /limiter 3 3 ./allocator 1<br/>
+add alarm() and signal() to get the timeouts working<br/>

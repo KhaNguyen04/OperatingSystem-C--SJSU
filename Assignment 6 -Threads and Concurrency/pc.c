@@ -1,368 +1,303 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <assert.h>
+#include <pthread.h>
 #include <string.h>
 
-struct list_s
-{
-    char *value;
+pthread_mutex_t readLock=PTHREAD_MUTEX_INITIALIZER;
+char* SENTINEL_VALUE="PLEASE WORK!!";
+typedef struct node{
+    char* value;
+    struct node *next;
+} node;
+typedef struct queue{
+    node *head;
+    node *tail;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+}queue;
+void queue_init(queue *q){
+    q->head=q->tail=NULL;
+
+    pthread_mutex_init(&q->mutex,NULL);
+    pthread_cond_init(&q->cond,NULL);
+}
+//Conditional variables from https://www.youtube.com/watch?v=0sVGnxg6Z3k&t=604s
+//Queue inspired from https://www.youtube.com/watch?v=FcIubL92gaI&t=390s
+//Jamie also helps me to recognize problem with the queues
+void queue_enqueue(queue *q,char* str){
+    node *tmp=malloc(sizeof(node));
+    if (tmp!=NULL) {
+        tmp->value = str;
+        tmp->next = NULL;
+        pthread_mutex_lock(&q->mutex);
+
+        if (q->tail != NULL) {
+            q->tail->next = tmp;
+        }
+        q->tail = tmp;
+        if (q->head == NULL) {
+            q->head = tmp;
+        }
+        pthread_cond_signal(&q->cond);
+        pthread_mutex_unlock(&q->mutex);
+    }
+
+}
+void* queue_dequeue(queue *q){
+    pthread_mutex_lock(&q->mutex);
+    while (q->head==NULL)
+        pthread_cond_wait(&q->cond,&q->mutex);
+    node *tmp=q->head;
+    char *words=tmp->value;
+    q->head=q->head->next;
+    if(q->head==NULL){
+        q->tail=NULL;
+    }
+    free(tmp);
+    pthread_mutex_unlock(&q->mutex);
+    return words;
+}
+int bottomTwoBits(char c){
+    return c&3;
+}
+
+#define BUCKET_COUNT 256
+struct hashtable_s{
+    struct list_s *heads[BUCKET_COUNT];
+    pthread_mutex_t lock;
+};
+struct list_s{
     struct list_s *next;
+    char *str;
     int count;
 };
-struct queue_s //got some help from the book for this part
-{
-    struct list_s *head;
-    struct list_s *tail;
-    pthread_mutex_t headLock;
-    pthread_mutex_t tailLock;
-    pthread_mutex_t emptyLock;
-    pthread_cond_t cond;
-    int ready;
-};
-struct hashtable_s
-{
-    struct list_s *heads[256];
-    struct queue_s *queue;
-    int maxCount;
-};
-struct queueList_s
-{
-    struct queue_s *queue00;
-    struct queue_s *queue01;
-    struct queue_s *queue10;
-    struct queue_s *queue11;
-};
-struct fileInput_s
-{
-    char *fileName;
-    struct queueList_s *queueList;
 
-};
-
-int hash(char *str) //djb2 method by Dan Bernstein, found on the internet
-{
-    unsigned long hash = 5381;
-
-    for (int i = 0; str[i] != '\0'; ++i)
-        hash = ((hash << 5) + hash) + (unsigned char)str[i];
-    return hash % 256;
-}
-int checkInList(struct list_s *head, char *str)
-{
-    while (head != NULL)
-    {
-        if (strcmp(head->value, str) == 0)
-        {
-            head->count++;
-            free(str);
-            return head->count;
-        }
-        head = head->next;
-
-    }
-    return 0;
-}
-void addToList(struct list_s **head, char *str)
-{
-    struct list_s *newNode = malloc(sizeof(*newNode));
-    newNode->count = 1;
-    newNode->value = str;
-    newNode->next = *head;
-    *head = newNode;
-}
-void addToHashTable(struct hashtable_s *hashtable, char *str)
-{
-    int h = hash(str);
-    int occurrences = checkInList(hashtable->heads[h], str);
-    if (occurrences == 0)
-    {
-        addToList(&hashtable->heads[h], str);
-        occurrences++; //local, used just for the next if statement
-    }
-    if (occurrences > hashtable->maxCount)
-        hashtable->maxCount = occurrences;
-}
-void queueInit(struct queue_s *queue)
-{
-    struct list_s *tmp = malloc(sizeof(*tmp));
-    tmp->next = NULL;
-    queue->head = tmp;
-    queue->head->value = NULL;
-    queue->tail = tmp;
-    pthread_mutex_init(&queue->headLock, NULL);
-    pthread_mutex_init(&queue->tailLock, NULL);
-    pthread_mutex_init(&queue->emptyLock, NULL);
-    pthread_cond_init(&queue->cond, NULL);
-    queue->ready = 0;
-}
-void queueListInit(struct queueList_s *queueList)
-{
-    struct queue_s *queue00 = malloc(sizeof(*queue00));
-    queueInit(queue00);
-    struct queue_s *queue01 = malloc(sizeof(*queue01));
-    queueInit(queue01);
-    struct queue_s *queue10 = malloc(sizeof(*queue10));
-    queueInit(queue10);
-    struct queue_s *queue11 = malloc(sizeof(*queue11));
-    queueInit(queue11);
-    queueList->queue00 = queue00;
-    queueList->queue01 = queue01;
-    queueList->queue10 = queue10;
-    queueList->queue11 = queue11;
-}
-void addToQueue(struct queue_s *queue, char *str)
-{
-    pthread_mutex_lock(&queue->headLock);
-
-    if (queue->head->value == NULL)
-    {
-        queue->head->value = str;
-        pthread_mutex_lock(&queue->emptyLock); //taken from slides
-        queue->ready = 1;
-        pthread_cond_signal(&queue->cond);
-        pthread_mutex_unlock(&queue->emptyLock);
-        pthread_mutex_unlock(&queue->headLock);
-        return;
-    }
-    pthread_mutex_unlock(&queue->headLock);
-    struct list_s *tmp = malloc(sizeof(struct list_s)); //got some help from the book for this part
-    tmp->value = str;
-    tmp->next = NULL;
-    pthread_mutex_lock(&queue->tailLock);
-    queue->tail->next = tmp;
-    queue->tail = tmp;
-    pthread_mutex_unlock(&queue->tailLock);
-
-
-}
-char *takeFromQueue(struct queue_s *queue)
-{
-    pthread_mutex_lock(&queue->headLock);
-    if (queue->head->value == NULL)
-    {
-        pthread_mutex_lock(&queue->emptyLock); //taken from slides
-        queue->ready = 0;
-        pthread_mutex_unlock(&queue->headLock);
-        while (!queue->ready)
-        {
-            pthread_cond_wait(&queue->cond, &queue->emptyLock);
-        }
-        pthread_mutex_unlock(&queue->emptyLock);
-        pthread_mutex_lock(&queue->headLock);
-    }
-
-    char *returnMe = queue->head->value;
-    struct list_s *oldNew = queue->head;
-    if (queue->head->next != NULL)
-    {
-        queue->head = queue->head->next;
-        free(oldNew);
-    }
-    else
-    {
-        queue->head->value = NULL;
-    }
-    pthread_mutex_unlock(&queue->headLock);
-    return returnMe;
-}
-
-void putWordsInQueue(char *fileName, struct queueList_s *queueList)
-{
-    FILE *thisFile = fopen((char *) fileName, "r");
-    if (thisFile) //taken partially from https://www.delftstack.com/howto/c/c-check-if-file-exists/
-    {
-        while (!feof(thisFile)) {
-            char *ptr;
-            if (fscanf(thisFile, "%ms", &ptr) != EOF)
-            {
-                switch (ptr[0] % 4)
-                {
-                    case 0:
-                        addToQueue(queueList->queue00, ptr);
-                        break;
-                    case 1:
-                        addToQueue(queueList->queue01, ptr);
-                        break;
-                    case 2:
-                        addToQueue(queueList->queue10, ptr);
-                        break;
-                    case 3:
-                        addToQueue(queueList->queue11, ptr);
-                        break;
-                }
-            }
-            else
-            {
-                fclose(thisFile);
-                return;
-            }
-
-        }
-    }
-    else
-    {
-        perror(fileName);
-    }
-
-}
-void *insertThreadHandler(void *v)
-{
-    struct fileInput_s *fileInput = (struct fileInput_s *)v;
-    putWordsInQueue(fileInput->fileName, fileInput->queueList);
-    free(fileInput);
-    return v;
-}
-
-void makeHashFromQueue(struct hashtable_s *hashtable)
-{
-    while(1)
-    {
-        char *str = takeFromQueue(hashtable->queue);
-        if (strcmp(str, "SENTINEL STOP") == 0)
-        {
-            free(str);
+void add_to_list(struct list_s **head, char* str){
+    struct list_s *new_node;
+    new_node=*head;
+    while (new_node!=NULL){
+//    for (new_node=*head;new_node!=NULL;new_node=new_node->next){
+        if (strcmp(new_node->str,str)==0){
+            new_node->count+=1;
             break;
         }
-        addToHashTable(hashtable, str);
+        new_node=new_node->next;
     }
-}
-void *hashThreadHandler(void *v)
-{
-    struct hashtable_s *hashtable = (struct hashtable_s *)v;
-    hashtable->maxCount = 0;
-    for (int i = 0; i < 256; ++i)
-    {
-        hashtable->heads[i] = NULL;
+    if (new_node==NULL){
+        struct list_s *new_node1=malloc(sizeof *new_node1);
+        new_node1->str=strdup(str);
+        new_node1->count=1;
+        new_node1->next=*head;
+        *head=new_node1;
+
     }
-    makeHashFromQueue(hashtable);
-    return v;
+//    new_node->str=strdup(str); //malloc(strlen(str)+1; strcpy(addr,str);
+//    new_node->next=*head;
+//    *head=new_node;
 }
-void printMaxInListAndFree(struct list_s *head, int max)
-{
-    while(head != NULL)
-    {
-        if (head->count == max)
-        {
-            printf("%s %d\n", head->value, max);
+int hash(char *str){
+    int total=0;
+    for (int i=0;str[i]!='\0';i++){
+        total=(total+(unsigned char) str[i])%BUCKET_COUNT;
+    }
+    return total;
+}
+void add_to_hashtable(struct hashtable_s *table,char *str){
+    int h=hash(str);
+    pthread_mutex_lock(&table->lock);
+    add_to_list(&table->heads[h],str);
+    pthread_mutex_unlock(&table->lock);
+}
+struct readFileParams{
+    char *fileName;
+    queue *q1;
+    queue *q2;
+    queue *q3;
+    queue *q4;
+};
+void *readFile(void* arg){
+    struct readFileParams *params=arg;
+    char *fileName= strdup(params->fileName);
+    queue *q1=params->q1;
+    queue *q2=params->q2;
+    queue *q3=params->q3;
+    queue *q4=params->q4;
+    FILE *file;
+    file= fopen(fileName,"r");
+    if (file==NULL){
+        perror(fileName);
+    }
+    else {
+        char *word_buffer;
+        while (fscanf(file, "%ms", &word_buffer) != EOF) {
+            if (bottomTwoBits(word_buffer[0]) == 0) {
+                queue_enqueue(q1, word_buffer);
+            } else if (bottomTwoBits(word_buffer[0]) == 1) {
+                queue_enqueue(q2, word_buffer);
+            } else if (bottomTwoBits(word_buffer[0]) == 2) {
+                queue_enqueue(q3, word_buffer);
+            } else {
+                queue_enqueue(q4, word_buffer);
+            }
         }
-        struct list_s *oldhead = head;
-        head = head->next;
-        free(oldhead->value);
-        free(oldhead);
+        free(word_buffer);
+        fclose(file);
     }
+    free(params);
 }
-void printMaxInHashAndFree(struct hashtable_s *hashtable, int max)
-{
-    for (int i = 0; i < 256; ++i)
-    {
-        printMaxInListAndFree(hashtable->heads[i], max);
-    }
 
+
+struct queueValueParams{
+    queue *q;
+    struct hashtable_s* table;
+};
+//Threads return value fromhttps://www.youtube.com/watch?v=ln3el6PR__Q&list=PLfqABt5AS4FmuQf70psXrsMLEDQXNkLq2&index=6
+void *queueValue(void *arg){
+    int maxCount=0;
+    struct queueValueParams *params=arg;
+    queue *q=params->q;
+    struct hashtable_s* table=params->table;
+    node *tmp=q->head;
+    while (strcmp(tmp->value,SENTINEL_VALUE)!=0){
+        pthread_mutex_lock(&readLock);
+        char* word= queue_dequeue(q);
+//        add_to_hashtable(table,tmp->value);
+        add_to_hashtable(table,word);
+//        tmp=tmp->next;
+        tmp=q->head;
+        pthread_mutex_unlock(&readLock);
+    }
+    for (int i=0;i<BUCKET_COUNT;i++){
+        for (struct list_s *ptr=table->heads[i];ptr;ptr=ptr->next){
+            if (maxCount<ptr->count){
+                maxCount=ptr->count;
+            }
+        }
+    }
+    int* returnMax=malloc(sizeof(int));
+    *returnMax=maxCount;
+    free(params);
+    return (void*) returnMax;
 }
-int findMax(int a, int b, int c, int d)
-{
-    int highab;
-    int highbc;
-    int highall;
-    if (a > b)
-        highab = a;
-    else
-        highab = b;
-    if (c > d)
-        highbc = c;
-    else
-        highbc = d;
-    if (highab > highbc)
-        highall = highab;
-    else
-        highall = highbc;
-    return highall;
-}
-int main(int argc, char *argv[]) {\
-    if (argc == 1)
-    {
-        return 0;
+
+int main(int argc, char **argv) {
+    pthread_t p1,p2,p3,p4;
+    pthread_mutex_init(&readLock,NULL);
+    queue q1,q2,q3,q4;
+    int *maxCount = 0;
+//    queue *q[4];
+//    for (int i=0;i<4;i++){
+//        queue_init(q[i]);
+//    }
+    queue_init(&q1);
+    queue_init(&q2);
+    queue_init(&q3);
+    queue_init(&q4);
+    int* returnCount1;
+    int* returnCount2;
+    int* returnCount3;
+    int* returnCount4;
+    int fileNum=argc-1;
+    pthread_t th_files[fileNum];
+    struct hashtable_s table1,table2,table3,table4;
+    memset(table1.heads,0,sizeof(table1.heads));
+    memset(table2.heads,0,sizeof(table2.heads));
+    memset(table3.heads,0,sizeof(table3.heads));
+    memset(table4.heads,0,sizeof(table4.heads));
+    pthread_mutex_init(&table1.lock,NULL);
+    pthread_mutex_init(&table2.lock,NULL);
+    pthread_mutex_init(&table3.lock,NULL);
+    pthread_mutex_init(&table4.lock,NULL);
+    for (int i=1;i<fileNum+1;i++){
+        struct readFileParams *params=malloc(sizeof *params);
+        params->fileName=strdup(argv[i]);
+        params->q1=&q1;
+        params->q2=&q2;
+        params->q3=&q3;
+        params->q4=&q4;
+        pthread_create(&th_files[i-1],NULL,&readFile,(void*)params);
     }
-    struct queueList_s *queueList = malloc(sizeof(struct queueList_s));
-    queueListInit(queueList);
-    pthread_t writetid[argc - 1];
-
-
-    for (int i = 1; i < argc; ++i) { //make writer threads
-        struct fileInput_s *fileInput = malloc(sizeof(struct fileInput_s));
-        fileInput->fileName = argv[i];
-        fileInput->queueList = queueList;
-        pthread_create(&writetid[i - 1], NULL, insertThreadHandler, (void *) fileInput);
+    for (int i=0;i<fileNum;i++){
+        pthread_join(th_files[i],NULL);
     }
-    pthread_t hashtid[4]; //make reader threads
-    struct hashtable_s *hash00 = malloc(sizeof(struct hashtable_s));
-    hash00->queue = queueList->queue00;
-    pthread_create(&hashtid[0], NULL, hashThreadHandler, (void *) hash00);
-    struct hashtable_s *hash01 = malloc(sizeof(struct hashtable_s));
-    hash01->queue = queueList->queue01;
-    pthread_create(&hashtid[1], NULL, hashThreadHandler, (void *) hash01);
-    struct hashtable_s *hash10 = malloc(sizeof(struct hashtable_s));
-    hash10->queue = queueList->queue10;
-    pthread_create(&hashtid[2], NULL, hashThreadHandler, (void *) hash10);
-    struct hashtable_s *hash11 = malloc(sizeof(struct hashtable_s));
-    hash11->queue = queueList->queue11;
-    pthread_create(&hashtid[3], NULL, hashThreadHandler, (void *) hash11);
+    queue_enqueue(&q1, SENTINEL_VALUE);
+    queue_enqueue(&q2, SENTINEL_VALUE);
+    queue_enqueue(&q3, SENTINEL_VALUE);
+    queue_enqueue(&q4, SENTINEL_VALUE);
+    struct queueValueParams *params1=malloc(sizeof *params1);
+    params1->table=&table1;
+    params1->q=&q1;
+    struct queueValueParams *params2=malloc(sizeof *params2);
+    params2->table=&table2;
+    params2->q=&q2;
+    struct queueValueParams *params3=malloc(sizeof *params3);
+    params3->table=&table3;
+    params3->q=&q3;
+    struct queueValueParams *params4=malloc(sizeof *params4);
+    params4->table=&table4;
+    params4->q=&q4;
 
-    for (int i = 1; i < argc; ++i) { //wait for writer threads to finish
-        pthread_join(writetid[i - 1], NULL);
+    pthread_create(&p1,NULL,&queueValue,(void*)params1);
+    pthread_create(&p2,NULL,&queueValue,(void*)params2);
+    pthread_create(&p3,NULL,&queueValue,(void*)params3);
+    pthread_create(&p4,NULL,&queueValue,(void*)params4);
+    pthread_join(p1, (void **) &returnCount1);
+    pthread_join(p2, (void **) &returnCount2);
+    pthread_join(p3, (void **) &returnCount3);
+    pthread_join(p4, (void **) &returnCount4);
+    if (maxCount < returnCount1) {
+        maxCount = returnCount1;
     }
-    addToQueue(queueList->queue00, strdup("SENTINEL STOP"));
-    addToQueue(queueList->queue01, strdup("SENTINEL STOP"));
-    addToQueue(queueList->queue10, strdup("SENTINEL STOP"));
-    addToQueue(queueList->queue11, strdup("SENTINEL STOP"));
-
-    for (int i = 0; i < 4; ++i) {
-        pthread_join(hashtid[i], NULL);
+    if (maxCount < returnCount2)  {
+        maxCount = returnCount2;
     }
+    if (maxCount < returnCount3) {
+        maxCount = returnCount3;
+    }
+    if (maxCount < returnCount4){
+        maxCount = returnCount4;
+    }
+    for (int i = 0; i < BUCKET_COUNT; i++) {
+        for (struct list_s *ptr = table1.heads[i]; ptr; ptr = ptr->next) {
+            if (*maxCount == ptr->count) {
+                printf("%s %d\n", ptr->str, *maxCount);
+            }
+        }
+    }
+    for (int i = 0; i < BUCKET_COUNT; i++) {
+        for (struct list_s *ptr = table2.heads[i]; ptr; ptr = ptr->next) {
+            if (*maxCount == ptr->count) {
+                printf("%s %d\n", ptr->str, *maxCount);
+            }
+        }
+    }
+    for (int i = 0; i < BUCKET_COUNT; i++) {
+        for (struct list_s *ptr = table3.heads[i]; ptr; ptr = ptr->next) {
+            if (*maxCount == ptr->count) {
+                printf("%s %d\n", ptr->str, *maxCount);
+            }
+        }
+    }
+    for (int i = 0; i < BUCKET_COUNT; i++) {
+        for (struct list_s *ptr = table4.heads[i]; ptr; ptr = ptr->next) {
+            if (*maxCount == ptr->count) {
+                printf("%s %d\n", ptr->str, *maxCount);
+            }
+        }
+    }
+    pthread_mutex_destroy(&readLock);
+    pthread_mutex_destroy(&table1.lock);
+    pthread_mutex_destroy(&table2.lock);
+    pthread_mutex_destroy(&table3.lock);
+    pthread_mutex_destroy(&table4.lock);
+    free(returnCount1);
+    free(returnCount2);
+    free(returnCount3);
+    free(returnCount4);
 
-
-
-
-    int maxCount = findMax(hash00->maxCount, hash01->maxCount, hash10->maxCount, hash11->maxCount);
-    printMaxInHashAndFree(hash00, maxCount);
-    printMaxInHashAndFree(hash01, maxCount);
-    printMaxInHashAndFree(hash10, maxCount);
-    printMaxInHashAndFree(hash11, maxCount);
-
-    free(queueList->queue00->head);
-    free(queueList->queue01->head);
-    free(queueList->queue10->head);
-    free(queueList->queue11->head);
-
-    free(hash00);
-    free(hash01);
-    free(hash10);
-    free(hash11);
-
-    pthread_mutex_destroy(&queueList->queue00->headLock);
-    pthread_mutex_destroy(&queueList->queue00->tailLock);
-    pthread_mutex_destroy(&queueList->queue00->emptyLock);
-    pthread_cond_destroy(&queueList->queue00->cond);
-    free(queueList->queue00);
-
-    pthread_mutex_destroy(&queueList->queue01->headLock);
-    pthread_mutex_destroy(&queueList->queue01->tailLock);
-    pthread_mutex_destroy(&queueList->queue01->emptyLock);
-    pthread_cond_destroy(&queueList->queue01->cond);
-    free(queueList->queue01);
-
-    pthread_mutex_destroy(&queueList->queue10->headLock);
-    pthread_mutex_destroy(&queueList->queue10->tailLock);
-    pthread_mutex_destroy(&queueList->queue10->emptyLock);
-    pthread_cond_destroy(&queueList->queue10->cond);
-    free(queueList->queue10);
-
-    pthread_mutex_destroy(&queueList->queue11->headLock);
-    pthread_mutex_destroy(&queueList->queue11->tailLock);
-    pthread_mutex_destroy(&queueList->queue11->emptyLock);
-    pthread_cond_destroy(&queueList->queue11->cond);
-    free(queueList->queue11);
-    free(queueList);
-
-
+//    struct list_s *head=NULL;
+//    for (struct list_s *ptr=head;ptr;ptr=ptr->next){}
+    return 0;
 }

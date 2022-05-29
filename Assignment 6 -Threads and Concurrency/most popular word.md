@@ -17,7 +17,7 @@ your program (pc.c) will take a list of filenames from the program arguments. it
 
 (there is no limit to the number of filenames. you will certainly be tested with more than 5!)
 <br/><br/>
-EXAMPLE EXECUTION
+EXAMPLE EXECUTION<br/>
 $ ./pc 1099words 399words <br/>
 wave 4<br/>
 $ ./pc 1099words 399words 799words <br/>
@@ -35,7 +35,7 @@ wave 5<br/>
 stratagem 5<br/>
 $ ./pc<br/>
 $<br/>
-SUGGESTED STEPS
+SUGGESTED STEPS<br/>
 write pc.c to simply print the files names passed on the commandline<br/>
 write a function that takes a file name, opens the file with fopen, and reads each word from a file and prints it. call the fuction with argv[1] from main.<br/>
 write a thread safe queue. instantiate 4 queues and pass them to the reader function from step 2. instead of printing the word, put it in the correct queue.<br/>

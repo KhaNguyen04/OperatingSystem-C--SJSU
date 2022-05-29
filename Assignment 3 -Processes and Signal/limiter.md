@@ -34,33 +34,33 @@ killed due to Segmentation fault <br/><br/>
 $ echo $? <br/>
 111<br/><br/>
 
-$ ./limiter 3 6 ./allocator 1 
-allocating 1M 
-$ echo $?                     
-0 
-$ ./limiter 3 6 ./allocator 1 2 
-allocating 1M 
-allocating 2M 
-$ echo $?                       
-0 
-$ ./limiter 3 6 ./allocator 1 2 3 
-allocating 1M 
-allocating 2M 
-allocating 3M 
-killed due to Segmentation fault 
-$ echo $? 
-111
+$ ./limiter 3 6 ./allocator 1 <br/>
+allocating 1M <br/>
+$ echo $?      <br/> 
+0 <br/><br/>
+$ ./limiter 3 6 ./allocator 1 2 <br/>
+allocating 1M <br/>
+allocating 2M <br/>
+$ echo $? <br/>                      
+0 <br/><br/>
+$ ./limiter 3 6 ./allocator 1 2 3 <br/>
+allocating 1M <br/>
+allocating 2M <br/>
+allocating 3M <br/>
+killed due to Segmentation fault <br/><br/>
+$ echo $? <br/>
+111<br/>
 
-$ ./limiter 3 1 ./nothere 1   
-./nothere: No such file or directory 
-$ echo $? 
-99
+$ ./limiter 3 1 ./nothere 1   <br/>
+./nothere: No such file or directory <br/><br/>
+$ echo $? <br/>
+99<br/><br/>
 there is a weird case where the exec() succeeds but the program fails to start if you don't have enough memory:
 
-$ ./limiter 3 1 ./allocator 1 
-./allocator: error while loading shared libraries: libc.so.6: failed to map segment from shared object 
-$ echo $? 
-127
+$ ./limiter 3 1 ./allocator 1 <br/>
+./allocator: error while loading shared libraries: libc.so.6: failed to map segment from shared object <br/><br/>
+$ echo $? <br/>
+127<br/><br/>
 implementation details
 to implement limiter, you will need to use fork() to create a child process that will execvp() the given program and arguments. before you do the execvp(), you must use setrlimit() to set the memory limits in the child (you don't want to set the memory limits on the parent). meanwhile, after fork() the parent will set an alarm for the timeout using alarm(). you have to register a signal handler using signal() to catch the signal when the alarm goes off. if the alarm is triggered, you should kill the child process using the kill() system call with the SIGKILL signal. you will then use the wait() system call to wait for the process to complete. you will need to use the W macros, like WEXITSTATUS() to get the exit code. you can get the signal description from a signal number using strsignal().
 

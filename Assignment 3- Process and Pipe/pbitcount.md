@@ -24,5 +24,10 @@ $ echo $?<br/>
 $ ./bitcount hi.txt filethatdoesnotexist.txt anothermissingfile.txt<br/>
 filethatdoesnotexist.txt: No such file or directory<br/><br/>
 $ echo $?<br/>
-2<br/>
+2<br/><br/>
 when you implement your program, you must use the functions, open(), and read(), so take a look at those. you must also use fork() to create processes for each file and pipe() to communicate between processes. the goal is to start up a process for each file so that you can count each file concurrently (at the same time). if you are not processing the files concurrently, points will be removed for not using fork() correctly.
+suggested steps to completing the assignment:<br/>
+write a simple program to loop through the filenames in argv and print them.<br/>
+use fork() to start up a process for each filename in argv and have each process print the filename it is in charge of. make sure the parent uses wait() to avoid ending before the child processes finish.<br/>
+use your code from the last assignment to make each process count the bits for the file it is in charge of and print the total for each thread.<br/>
+use pipe() to set up a channel between the parent process and the child processes. have the child process write the total to the pipe instead of printing the total. the parent will read the totals from each child and print the grand total after the last child finishes.<br/>

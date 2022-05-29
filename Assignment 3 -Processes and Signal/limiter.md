@@ -21,18 +21,18 @@ $ echo $?    <br/>
 1 <br/>
 <br/>
 $ ./limiter 3 3 sleep 1 <br/>
-$$ echo $$?               <br/>
+$ echo $?               <br/>
 0 <br/>
 <br/>
-$ ./limiter 3 3 sleep 4 
-killed due to Killed 
-$ echo $? 
-109 
-$ ./limiter 3 3 ./allocator 1 
-allocating 1M 
-killed due to Segmentation fault 
-$ echo $? 
-111
+$ ./limiter 3 3 sleep 4 <br/>
+killed due to Killed <br/><br/>
+$ echo $? <br/>
+109 <br/><br/>
+$ ./limiter 3 3 ./allocator 1 <br/>
+allocating 1M <br/>
+killed due to Segmentation fault <br/><br/>
+$ echo $? <br/>
+111<br/><br/>
 
 $ ./limiter 3 6 ./allocator 1 
 allocating 1M 
